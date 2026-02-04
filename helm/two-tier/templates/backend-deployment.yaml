@@ -1,46 +1,46 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend
-  namespace: two-tier
+  name: {{ .Values.backend.name }}
+  namespace: {{ .Values.namespace }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.backend.replicas }}
   selector:
     matchLabels:
-      app: backend
+      app: {{ .Values.backend.name }}
   template:
     metadata:
       labels:
-        app: backend
+        app: {{ .Values.backend.name }}
     spec:
       containers:
-        - name: backend
-          image: gcp-backend:v1
+        - name: {{ .Values.backend.name }}
+          image: {{ .Values.backend.image }}
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8000
+            - containerPort: {{ .Values.backend.containerPort }}
 
           readinessProbe:
             httpGet:
               path: /health
-              port: 8000
+              port: {{ .Values.backend.containerPort }}
             initialDelaySeconds: 5
             periodSeconds: 10
 
           livenessProbe:
             httpGet:
               path: /health
-              port: 8000
+              port: {{ .Values.backend.containerPort }}
             initialDelaySeconds: 15
             periodSeconds: 20
 
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: {{ .Values.backend.resources.requests.cpu | quote }}
+              memory: {{ .Values.backend.resources.requests.memory | quote }}
             limits:
-              cpu: "500m"
-              memory: "512Mi"
+              cpu: {{ .Values.backend.resources.limits.cpu | quote }}
+              memory: {{ .Values.backend.resources.limits.memory | quote }}
 
           env:
             - name: DB_HOST
@@ -48,42 +48,23 @@ spec:
                 configMapKeyRef:
                   name: app-config
                   key: DB_HOST
-
             - name: DB_PORT
               valueFrom:
                 configMapKeyRef:
                   name: app-config
                   key: DB_PORT
-
             - name: DB_NAME
               valueFrom:
                 configMapKeyRef:
                   name: app-config
                   key: DB_NAME
-
             - name: DB_USER
               valueFrom:
                 configMapKeyRef:
                   name: app-config
                   key: DB_USER
-
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: app-secret
                   key: DB_PASSWORD
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: backend
-  namespace: two-tier
-spec:
-  selector:
-    app: backend
-  ports:
-    - port: 8000
-      targetPort: 8000
-  type: NodePort
-

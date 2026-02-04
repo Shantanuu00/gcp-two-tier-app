@@ -3,6 +3,7 @@ import psycopg2
 import os
 
 app = FastAPI()
+
 def get_db_connection():
     return psycopg2.connect(
         host=os.getenv("DB_HOST", "gcp-postgres"),
