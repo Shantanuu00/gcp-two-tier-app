@@ -29,7 +29,7 @@ jobs:
 
       - name: Build Docker image (latest + sha tag)
         run: |
-          docker build -f app/Dockerfile -t "${IMAGE_REPO}:${TAG}" -t "${IMAGE_REPO}:latest" .
+          docker build -f app/Dockerfile -t "${IMAGE_REPO}:${TAG}" -t "${IMAGE_REPO}:latest" app
 
       - name: Push Docker image (latest + sha tag)
         run: |
