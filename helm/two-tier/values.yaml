@@ -1,11 +1,9 @@
 namespace: two-tier
-
 backend:
   name: backend
-  image: gcp-backend:v1
+  image: shantanu0000/gcp-backend:9ef75b0
   containerPort: 8000
   replicas: 1
-
   resources:
     requests:
       cpu: "100m"
@@ -13,31 +11,25 @@ backend:
     limits:
       cpu: "500m"
       memory: "512Mi"
-
   ingress:
     enabled: true
     host: api.local
     path: /
-
   hpa:
     enabled: true
     minReplicas: 2
     maxReplicas: 6
     cpuAverageUtilization: 60
-
 postgres:
   name: postgres
   image: postgres:16
   port: 5432
   storage:
     size: 1Gi
-
 config:
   DB_HOST: postgres
   DB_PORT: "5432"
   DB_NAME: postgres
   DB_USER: postgres
-
 secret:
   DB_PASSWORD: "postgres"
-
