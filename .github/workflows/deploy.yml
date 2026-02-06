@@ -5,7 +5,6 @@ on:
     branches:
       - main
 
-# Needed so the workflow can commit back to the repo (GitOps bump)
 permissions:
   contents: write
 
@@ -18,9 +17,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set image variables
-        id: vars
         run: |
-          echo "IMAGE=${{ secrets.DOCKER_USERNAME }}/gcp-backend" >> $GITHUB_ENV
+          echo "IMAGE_REPO=${{ secrets.DOCKER_USERNAME }}/gcp-backend" >> $GITHUB_ENV
           echo "TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
       - name: Login to DockerHub
@@ -31,18 +29,22 @@ jobs:
 
       - name: Build Docker image (latest + sha tag)
         run: |
-          docker build -t "${IMAGE}:${TAG}" -t "${IMAGE}:latest" .
+          docker build -t "${IMAGE_REPO}:${TAG}" -t "${IMAGE_REPO}:latest" .
 
       - name: Push Docker image (latest + sha tag)
         run: |
-          docker push "${IMAGE}:${TAG}"
-          docker push "${IMAGE}:latest"
+          docker push "${IMAGE_REPO}:${TAG}"
+          docker push "${IMAGE_REPO}:latest"
 
-      # Update Helm values.yaml so ArgoCD will deploy the new image tag
-      - name: Update Helm values.yaml image repository + tag
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Update Helm values.yaml (backend.image)
         run: |
           set -e
-
           VALUES_FILE="helm/two-tier/values.yaml"
 
           if [ ! -f "$VALUES_FILE" ]; then
@@ -50,24 +52,17 @@ jobs:
             exit 1
           fi
 
-          # Update repository under image:
-          # Replace the line after "image:" that starts with "repository:"
-          # and replace tag line.
-          sed -i "s|^\(\s*repository:\s*\).*|\1\"${IMAGE}\"|g" "$VALUES_FILE"
-          sed -i "s|^\(\s*tag:\s*\).*|\1\"${TAG}\"|g" "$VALUES_FILE"
+          yq -i '.backend.image = strenv(IMAGE_REPO) + ":" + strenv(TAG)' "$VALUES_FILE"
 
-          echo "Updated values.yaml:"
-          grep -nE "^\s*repository:|^\s*tag:" "$VALUES_FILE"
+          echo "Updated backend.image:"
+          yq '.backend.image' "$VALUES_FILE"
 
-      - name: Commit & push Helm values.yaml bump
+      - name: Commit & push Helm values bump
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
           git add helm/two-tier/values.yaml
-
-          # If no change, don't fail
-          git commit -m "ci: bump image tag to ${TAG}" || echo "No changes to commit"
-
+          git commit -m "ci: bump backend image to ${TAG}" || echo "No changes to commit"
           git push
 
