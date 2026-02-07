@@ -2,8 +2,7 @@ name: CI-CD
 
 on:
   push:
-    branches:
-      - main
+    branches: ["main"]
 
 permissions:
   contents: write
@@ -12,14 +11,19 @@ jobs:
   build_push_and_bump_values:
     runs-on: ubuntu-latest
 
+    env:
+      IMAGE_REPO: shantanu0000/gcp-backend
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set image variables
+        id: vars
         run: |
-          echo "IMAGE_REPO=${{ secrets.DOCKER_USERNAME }}/gcp-backend" >> $GITHUB_ENV
-          echo "TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+          echo "IMAGE_TAG=$SHORT_SHA" >> $GITHUB_ENV
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -27,13 +31,14 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build Docker image (latest + sha tag)
+      # Build using app/ as build context (because Dockerfile + requirements are there)
+      - name: Build Docker image (sha + latest)
         run: |
-          docker build -f app/Dockerfile -t "${IMAGE_REPO}:${TAG}" -t "${IMAGE_REPO}:latest" app
+          docker build -t "${IMAGE_REPO}:${IMAGE_TAG}" -t "${IMAGE_REPO}:latest" -f app/Dockerfile app
 
-      - name: Push Docker image (latest + sha tag)
+      - name: Push Docker image (sha + latest)
         run: |
-          docker push "${IMAGE_REPO}:${TAG}"
+          docker push "${IMAGE_REPO}:${IMAGE_TAG}"
           docker push "${IMAGE_REPO}:latest"
 
       - name: Install yq
@@ -42,27 +47,21 @@ jobs:
           sudo chmod +x /usr/local/bin/yq
           yq --version
 
-      - name: Update Helm values.yaml (backend.image)
+      - name: Update Helm values.yaml (backend.image -> sha tag)
         run: |
-          set -e
-          VALUES_FILE="helm/two-tier/values.yaml"
-
-          if [ ! -f "$VALUES_FILE" ]; then
-            echo "ERROR: $VALUES_FILE not found"
-            exit 1
-          fi
-
-          yq -i '.backend.image = strenv(IMAGE_REPO) + ":" + strenv(TAG)' "$VALUES_FILE"
-
-          echo "Updated backend.image:"
-          yq '.backend.image' "$VALUES_FILE"
+          yq -i '.backend.image = "'"${IMAGE_REPO}:${IMAGE_TAG}"'"' helm/two-tier/values.yaml
+          echo "Updated values.yaml to ${IMAGE_REPO}:${IMAGE_TAG}"
+          cat helm/two-tier/values.yaml | sed -n '1,60p'
 
       - name: Commit & push Helm values bump
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add helm/two-tier/values.yaml
-          git commit -m "ci: bump backend image to ${TAG}" || echo "No changes to commit"
+          git commit -m "ci: bump backend image to ${IMAGE_TAG}"
           git push
 
