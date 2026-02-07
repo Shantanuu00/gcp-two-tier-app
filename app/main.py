@@ -4,6 +4,11 @@ import os
 
 app = FastAPI()
 
+# --- Build metadata (for DevOps visibility) ---
+GIT_SHA = os.getenv("GIT_SHA", "dev")
+BUILD_TIME = os.getenv("BUILD_TIME", "unknown")
+
+
 def get_db_connection():
     return psycopg2.connect(
         host=os.getenv("DB_HOST", "gcp-postgres"),
@@ -18,9 +23,20 @@ def get_db_connection():
 def read_root():
     return {"message": "Hello from GCP 2-Tier App 🚀"}
 
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# --- NEW VERSION ENDPOINT ---
+@app.get("/version")
+def version():
+    return {
+        "git_sha": GIT_SHA,
+        "build_time": BUILD_TIME
+    }
+
 
 @app.get("/db")
 def db_check():
@@ -34,3 +50,4 @@ def db_check():
         return {"db": "connected", "result": result[0]}
     except Exception as e:
         return {"db": "error", "detail": str(e)}
+
