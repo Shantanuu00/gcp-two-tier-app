@@ -19,10 +19,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set image variables
-        id: vars
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
-          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
           echo "IMAGE_TAG=$SHORT_SHA" >> $GITHUB_ENV
 
       - name: Login to DockerHub
@@ -31,10 +29,15 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Build using app/ as build context (because Dockerfile + requirements are there)
       - name: Build Docker image (sha + latest)
         run: |
-          docker build -t "${IMAGE_REPO}:${IMAGE_TAG}" -t "${IMAGE_REPO}:latest" -f app/Dockerfile app
+          docker build \
+            -f app/Dockerfile \
+            -t "${IMAGE_REPO}:${IMAGE_TAG}" \
+            -t "${IMAGE_REPO}:latest" \
+            --build-arg GIT_SHA="${GITHUB_SHA}" \
+            --build-arg BUILD_TIME="$(date -u +%FT%TZ)" \
+            app
 
       - name: Push Docker image (sha + latest)
         run: |
@@ -51,7 +54,7 @@ jobs:
         run: |
           yq -i '.backend.image = "'"${IMAGE_REPO}:${IMAGE_TAG}"'"' helm/two-tier/values.yaml
           echo "Updated values.yaml to ${IMAGE_REPO}:${IMAGE_TAG}"
-          cat helm/two-tier/values.yaml | sed -n '1,60p'
+          sed -n '1,80p' helm/two-tier/values.yaml
 
       - name: Commit & push Helm values bump
         run: |
@@ -59,8 +62,10 @@ jobs:
             echo "No changes to commit."
             exit 0
           fi
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
           git add helm/two-tier/values.yaml
           git commit -m "ci: bump backend image to ${IMAGE_TAG}"
           git push
