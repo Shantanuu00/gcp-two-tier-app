@@ -29,7 +29,7 @@ postgres:
 config:
   DB_HOST: postgres
   DB_PORT: "5432"
-  DB_NAME: postgres
-  DB_USER: postgres
+  DB_NAME: appdb
+  DB_USER: appuser
 secret:
-  DB_PASSWORD: "postgres"
+  DB_PASSWORD: "apppassword"
