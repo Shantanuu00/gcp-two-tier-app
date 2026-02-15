@@ -4,6 +4,9 @@ import os
 
 app = FastAPI()
 
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+
 def get_db_connection():
     return psycopg2.connect(
         host=os.getenv("DB_HOST", "postgres"),
@@ -69,4 +72,5 @@ def db_visits():
     cur.close()
     conn.close()
     return {"visits": count}
+
 
