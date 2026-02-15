@@ -1,7 +1,7 @@
 namespace: two-tier
 backend:
   name: backend
-  image: shantanu0000/gcp-backend:f73bd42
+  image: shantanu0000/gcp-backend:1acb410
   containerPort: 8000
   replicas: 1
   resources:
