@@ -1,9 +1,8 @@
 # GCP-Style Two-Tier DevOps Application on Kubernetes
 
 A production-style **two-tier web application** deployed on Kubernetes using DevOps best practices.
-
-This project demonstrates containerization, orchestration, CI/CD, GitOps, autoscaling, and observability — similar to real-world cloud deployments.
-
+BLOG POST FOR DEEP DIVE : https://medium.com/@shantanupawar0709/from-code-to-kubernetes-building-a-production-style-2-tier-app-with-ci-cd-gitops-and-monitoring-3acaa521ac15
+This project demonstrates containerization, orchestration, CI/CD, GitOps, autoscaling, and observability — similar to real-world cloud deployments.:
 ---
 
 ## 🚀 Tech Stack
